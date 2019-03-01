@@ -10,10 +10,11 @@ export interface InstanceOf<V> extends Runtype<V> {
   ctor: Constructor<V>;
 }
 
-export function InstanceOf<V>(ctor: Constructor<V>) {
+export function InstanceOf<V>(ctor: Constructor<V>, customInstanceOf?: (o: V) => boolean) {
   return create<InstanceOf<V>>(
     x => {
-      if (!(x instanceof ctor)) {
+      const isInstanceOf = customInstanceOf ? customInstanceOf(x as any) : (x instanceof ctor);
+      if (!isInstanceOf) {
         throw new ValidationError(`Expected ${(ctor as any).name}, but was ${typeof x}`);
       }
       return x as V;
