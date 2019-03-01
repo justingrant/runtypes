@@ -2,7 +2,7 @@ import { Runtype, create } from '../runtype';
 import { ValidationError } from '../errors';
 
 export interface Constructor<V> {
-  new (...args: any[]): V;
+  new(...args: any[]): V;
 }
 
 export interface InstanceOf<V> extends Runtype<V> {
