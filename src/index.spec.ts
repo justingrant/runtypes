@@ -41,10 +41,21 @@ type Person = { name: string; likes: Person[] };
 const Person: Runtype<Person> = Lazy(() => Record({ name: String, likes: Array(Person) }));
 
 class SomeClass {
-  constructor(public n: number) {}
+  constructor(public n: number) { }
 }
 class SomeOtherClass {
-  constructor(public n: number) {}
+  constructor(public n: number) { }
+}
+const SOMECLASS_TAG = 'I am a SomeClass instance (any version)'
+class SomeClassV1 {
+  constructor(public n: number) { }
+  public _someClassTag = SOMECLASS_TAG;
+  public static isSomeClass = (o: any) => o._someClassTag === SOMECLASS_TAG;
+}
+class SomeClassV2 {
+  constructor(public n: number) { }
+  public _someClassTag = SOMECLASS_TAG;
+  public static isSomeClass = (o: any) => o._someClassTag === SOMECLASS_TAG;
 }
 
 const runtypes = {
@@ -86,6 +97,9 @@ const runtypes = {
   DictionaryOfArrays: Dictionary(Array(Boolean)),
   InstanceOfSomeClass: InstanceOf(SomeClass),
   InstanceOfSomeOtherClass: InstanceOf(SomeOtherClass),
+  InstanceOfSomeClassV1: InstanceOf(SomeClassV1, SomeClassV1.isSomeClass),
+  InstanceOfRegExp: InstanceOf(RegExp),
+  InstanceOfDate: InstanceOf(Date),
   DictionaryOfArraysOfSomeClass: Dictionary(Array(InstanceOf(SomeClass))),
   OptionalKey: Record({ foo: String, bar: Union(Number, Undefined) }),
 };
@@ -130,6 +144,9 @@ const testValues: { value: unknown; passes: RuntypeName[] }[] = [
   { value: { Boolean: true, Number: '5' }, passes: ['Partial'] },
   { value: [1, 2, 3, 4], passes: ['ArrayNumber', 'CustomArray', 'CustomArrayWithMessage'] },
   { value: new SomeClass(42), passes: ['InstanceOfSomeClass'] },
+  { value: new SomeClassV2(42), passes: ['InstanceOfSomeClassV1'] },
+  { value: new Date(), passes: ['InstanceOfDate'] },
+  { value: /[a-z]/, passes: ['InstanceOfRegExp'] },
   { value: { xxx: [new SomeClass(55)] }, passes: ['DictionaryOfArraysOfSomeClass'] },
   { value: { foo: 'hello' }, passes: ['OptionalKey', 'Dictionary'] },
   { value: { foo: 'hello', bar: undefined }, passes: ['OptionalKey'] },
@@ -463,7 +480,7 @@ describe('reflection', () => {
   });
 
   it('instanceof', () => {
-    class Test {}
+    class Test { }
     expectLiteralField(InstanceOf(Test), 'tag', 'instanceof');
     expectLiteralField(Dictionary(Array(InstanceOf(Test))), 'tag', 'dictionary');
   });
