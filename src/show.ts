@@ -49,6 +49,8 @@ const show = (needsParens: boolean) => (refl: Reflect): string => {
       return `InstanceOf<${name}>`;
     case 'brand':
       return show(needsParens)(refl.entity);
+    case 'guard':
+      return refl.name;
   }
 };
 

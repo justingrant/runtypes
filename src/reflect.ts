@@ -29,4 +29,5 @@ export type Reflect =
       args?: any;
     } & Runtype
   | { tag: 'instanceof'; ctor: Constructor<unknown> } & Runtype
-  | { tag: 'brand'; brand: string; entity: Reflect } & Runtype;
+  | { tag: 'brand'; brand: string; entity: Reflect } & Runtype
+  | { tag: 'guard'; name: string } & Runtype;
