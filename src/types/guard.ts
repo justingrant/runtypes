@@ -9,7 +9,7 @@ export interface Guard<V> extends Runtype<V> {
 
 export function Guard<V>(
   name: string,
-  guard: (x: any, errorReporter: (message: string) => void) => x is V,
+  guard: (x: any, errorReporter?: (message: string) => void) => x is V,
 ) {
   return create<Guard<V>>(
     x => {
