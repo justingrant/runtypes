@@ -219,6 +219,48 @@ const Positive = Number.withConstraint(n => n > 0 || `${n} is not positive`);
 Positive.check(-3); // Throws error: -3 is not positive
 ```
 
+## Custom type guards
+
+If an existing `Runtype` doesn't fit the type-checking behavior you want, you can build your own 
+using a [type guard](https://basarat.gitbooks.io/typescript/content/docs/types/typeGuard.html) 
+function and the `Guard` runtype.
+
+For example, many JavaScript classes offer a static method for type checking (e.g. 
+node.js [`Buffer.isBuffer`](https://nodejs.org/api/buffer.html#buffer_class_method_buffer_isbuffer_obj)
+because `instanceof` isn't OK to use when multiple versions of a class are used side-by-side. 
+If these methods are already TypeScript type guards, then they're easy to wrap with a `Runtype`:
+
+```ts
+const RtBuffer = Guard('Buffer', Buffer.isBuffer);
+RtBuffer.check('not a buffer'); // Throws error: Failed to pass type guard for Buffer
+```
+
+It's also easy to build your own type guard into a custom `Runtype`:
+
+```ts
+const myClassGuard = (o: any): o is MyClass => o._myClassId === 'M Y C L A S S';
+const RtMyClass = Guard('MyClass', myClassGuard);
+RtMyClass.check('not a MyClass'); // Throws error: Failed to pass type guard for MyClass
+```
+
+Custom type guards can also optionally customize validation error messages:
+
+```ts
+const myClassGuard = (o: any, errorReporter?: (message: string) => void): o is MyClass => {
+  const id = o._myClassId;
+  if (!id) {
+    errorReporter && errorReporter(`MyClass id not found`);
+    return false;
+  } else if (id !== 'M Y C L A S S') {
+    errorReporter && errorReporter(`Invalid MyClass id: ${id}`);
+    return false;
+  }
+  return true;
+}
+const RtMyClass = Guard('MyClass', myClassGuard);
+RtMyClass.check( {_myClassId: 'fake'} ); // Throws error: Invalid MyClass id: fake
+```
+
 ## Function contracts
 
 Runtypes along with constraint checking are a natural fit for enforcing function
