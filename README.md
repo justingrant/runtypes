@@ -221,21 +221,17 @@ Positive.check(-3); // Throws error: -3 is not positive
 
 ## Custom type guards
 
-If an existing `Runtype` doesn't fit the type-checking behavior you want, you can build your own 
-using a [type guard](https://basarat.gitbooks.io/typescript/content/docs/types/typeGuard.html) 
-function and the `Guard` runtype.
+If an existing `Runtype` doesn't fit the type-checking behavior you want, you can build your own using a [type guard](https://basarat.gitbooks.io/typescript/content/docs/types/typeGuard.html) function and the `Guard<T>` runtype.
 
-For example, many JavaScript classes offer a static method for type checking (e.g. 
-node.js [`Buffer.isBuffer`](https://nodejs.org/api/buffer.html#buffer_class_method_buffer_isbuffer_obj)
-because `instanceof` isn't OK to use when multiple versions of a class are used side-by-side. 
-If these methods are already TypeScript type guards, then they're easy to wrap with a `Runtype`:
+For example, many JavaScript classes use a static method for type checking because `instanceof` (and therefore the `InstanceOf` runtype) won't match different versions of the same class running side-by-side in a node.js environment. If the class already provides a type guard, like [`Buffer.isBuffer`](https://nodejs.org/api/buffer.html#buffer_class_method_buffer_isbuffer_obj), then it's easy to wrap it with a `Runtype`:
 
 ```ts
+// const badDontUse = InstanceOf(Buffer); // breaks if different Buffer versions are used
 const RtBuffer = Guard('Buffer', Buffer.isBuffer);
 RtBuffer.check('not a buffer'); // Throws error: Failed to pass type guard for Buffer
 ```
 
-It's also easy to build your own type guard into a custom `Runtype`:
+It's also easy to use a custom type guard function:
 
 ```ts
 const myClassGuard = (o: any): o is MyClass => o._myClassId === 'M Y C L A S S';
@@ -243,7 +239,7 @@ const RtMyClass = Guard('MyClass', myClassGuard);
 RtMyClass.check('not a MyClass'); // Throws error: Failed to pass type guard for MyClass
 ```
 
-Custom type guards can also optionally customize validation error messages:
+Validation messages can optionally be customized using type guards:
 
 ```ts
 const myClassGuard = (o: any, errorReporter?: (message: string) => void): o is MyClass => {
@@ -260,6 +256,8 @@ const myClassGuard = (o: any, errorReporter?: (message: string) => void): o is M
 const RtMyClass = Guard('MyClass', myClassGuard);
 RtMyClass.check( {_myClassId: 'fake'} ); // Throws error: Invalid MyClass id: fake
 ```
+
+You can think of the `Guard<T>` runtype as the opposite of the `Runtype<T>.guard` method. `Guard<T>` transforms a type guard function for type `T` into a `Runtype` for type `T`.  `Runtype<T>.guard` does the reverse: it takes a `Runtype` for type `T` and produces a type guard function for `T`.
 
 ## Function contracts
 
