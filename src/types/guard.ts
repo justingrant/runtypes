@@ -13,18 +13,18 @@ export function Guard<V>(
 ) {
   return create<Guard<V>>(
     x => {
-      let error: string | undefined;
+      let errMsg: string | undefined;
       const errorReporter = (message: string) => {
-        if (String.guard(error))
-          throw new Error('Cannot report more than one error from a guard function');
-        error = message;
+        if (String.guard(errMsg))
+          throw new Error('Cannot report more than one error from a type guard');
+        errMsg = message;
       };
       if (guard(x, errorReporter)) {
-        if (String.guard(error))
-          throw new Error('Guard function cannot return true after reporting an error');
+        if (String.guard(errMsg))
+          throw new Error('Type guard must return false after reporting an error');
         return x;
       } else {
-        if (String.guard(error)) throw new ValidationError(error);
+        if (String.guard(errMsg)) throw new ValidationError(errMsg);
         else throw new ValidationError(`Failed to pass type guard for ${name}`);
       }
     },
