@@ -46,6 +46,33 @@ class SomeClass {
 class SomeOtherClass {
   constructor(public n: number) {}
 }
+const SOMECLASS_TAG = 'I am a SomeClass instance (any version)';
+class SomeClassV1 {
+  constructor(public n: number) {}
+  public _someClassTag = SOMECLASS_TAG;
+  public static isSomeClass = (o: any): o is SomeClassV1 => o._someClassTag === SOMECLASS_TAG;
+  public static isSomeClassCustomError = (
+    o: any,
+    errorReporter: (message: string) => void,
+  ): o is SomeClassV1 => {
+    const match = o._someClassTag === SOMECLASS_TAG;
+    if (!match) errorReporter('Not a SomeClass');
+    return match;
+  };
+}
+class SomeClassV2 {
+  constructor(public n: number) {}
+  public _someClassTag = SOMECLASS_TAG;
+  public static isSomeClass = (o: any): o is SomeClassV2 => o._someClassTag === SOMECLASS_TAG;
+  public static isSomeClassCustomError = (
+    o: any,
+    errorReporter: (message: string) => void,
+  ): o is SomeClassV2 => {
+    const match = o._someClassTag === SOMECLASS_TAG;
+    if (!match) errorReporter('Not a SomeClass');
+    return match;
+  };
+}
 
 const runtypes = {
   Unknown,
