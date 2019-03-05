@@ -28,6 +28,7 @@ import {
   Reflect,
   InstanceOf,
   Brand,
+  Guard,
 } from './index';
 
 import { Constructor } from './types/instanceof';
@@ -53,10 +54,10 @@ class SomeClassV1 {
   public static isSomeClass = (o: any): o is SomeClassV1 => o._someClassTag === SOMECLASS_TAG;
   public static isSomeClassCustomError = (
     o: any,
-    errorReporter: (message: string) => void,
+    errorReporter?: (message: string) => void,
   ): o is SomeClassV1 => {
     const match = o._someClassTag === SOMECLASS_TAG;
-    if (!match) errorReporter('Not a SomeClass');
+    if (!match && errorReporter) errorReporter('Not a SomeClass');
     return match;
   };
 }
@@ -66,10 +67,10 @@ class SomeClassV2 {
   public static isSomeClass = (o: any): o is SomeClassV2 => o._someClassTag === SOMECLASS_TAG;
   public static isSomeClassCustomError = (
     o: any,
-    errorReporter: (message: string) => void,
+    errorReporter?: (message: string) => void,
   ): o is SomeClassV2 => {
     const match = o._someClassTag === SOMECLASS_TAG;
-    if (!match) errorReporter('Not a SomeClass');
+    if (!match && errorReporter) errorReporter('Not a SomeClass');
     return match;
   };
 }
@@ -113,8 +114,11 @@ const runtypes = {
   DictionaryOfArrays: Dictionary(Array(Boolean)),
   InstanceOfSomeClass: InstanceOf(SomeClass),
   InstanceOfSomeOtherClass: InstanceOf(SomeOtherClass),
+  InstanceOfRegExp: InstanceOf(RegExp),
+  InstanceOfDate: InstanceOf(Date),
   DictionaryOfArraysOfSomeClass: Dictionary(Array(InstanceOf(SomeClass))),
   OptionalKey: Record({ foo: String, bar: Union(Number, Undefined) }),
+  GuardForSomeClassV1: Guard('SomeClass', SomeClassV1.isSomeClass),
 };
 
 type RuntypeName = keyof typeof runtypes;
@@ -157,9 +161,12 @@ const testValues: { value: unknown; passes: RuntypeName[] }[] = [
   { value: { Boolean: true, Number: '5' }, passes: ['Partial'] },
   { value: [1, 2, 3, 4], passes: ['ArrayNumber', 'CustomArray', 'CustomArrayWithMessage'] },
   { value: new SomeClass(42), passes: ['InstanceOfSomeClass'] },
+  { value: new Date(), passes: ['InstanceOfDate'] },
+  { value: /[a-z]/, passes: ['InstanceOfRegExp'] },
   { value: { xxx: [new SomeClass(55)] }, passes: ['DictionaryOfArraysOfSomeClass'] },
   { value: { foo: 'hello' }, passes: ['OptionalKey', 'Dictionary'] },
   { value: { foo: 'hello', bar: undefined }, passes: ['OptionalKey'] },
+  { value: new SomeClassV2(42), passes: ['GuardForSomeClassV1'] },
 ];
 
 for (const { value, passes } of testValues) {
@@ -380,6 +387,49 @@ describe('check errors', () => {
   it('union', () => {
     assertThrows(false, Union(Number, String), 'Expected number | string, but was boolean');
   });
+
+  it('guard simple', () => {
+    assertThrows(
+      false,
+      Guard<SomeClassV1>('SomeClass', SomeClassV1.isSomeClass),
+      'Failed to pass type guard for SomeClass',
+    );
+  });
+
+  it('guard custom errors', () => {
+    assertThrows(
+      false,
+      Guard<SomeClassV1>('SomeClass', SomeClassV1.isSomeClassCustomError),
+      'Not a SomeClass',
+    );
+  });
+
+  it('guard multiple errors', () => {
+    const badGuard = (x: any, errorReporter?: (message: string) => void): x is SomeClassV1 => {
+      if (errorReporter) {
+        errorReporter(typeof x);
+        errorReporter('hello world');
+      }
+      return false;
+    };
+    assertThrowsRegularError(
+      new SomeClassV1(42),
+      Guard<SomeClassV1>('SomeClass', badGuard),
+      'Cannot report more than one error from a guard function',
+    );
+  });
+
+  it('guard error when true', () => {
+    const badGuard = (x: any, errorReporter?: (message: string) => void): x is SomeClassV1 => {
+      if (errorReporter) errorReporter(typeof x);
+      return true;
+    };
+    assertThrowsRegularError(
+      new SomeClassV1(42),
+      Guard<SomeClassV1>('SomeClass', badGuard),
+      'Guard function cannot return true after reporting an error',
+    );
+  });
 });
 
 describe('reflection', () => {
@@ -500,6 +550,12 @@ describe('reflection', () => {
     expectLiteralField(C, 'tag', 'brand');
     expectLiteralField(C.entity, 'tag', 'number');
   });
+
+  it('guard', () => {
+    const G = Guard<SomeClassV1>('SomeClass', SomeClassV1.isSomeClass);
+    expectLiteralField(G, 'tag', 'guard');
+    expectLiteralField(G, 'name', 'SomeClass');
+  });
 });
 
 // Static tests of reflection
@@ -522,7 +578,8 @@ describe('reflection', () => {
     | Function
     | Constraint<Reflect, any>
     | InstanceOf<Constructor<never>>
-    | Brand<string, Reflect>,
+    | Brand<string, Reflect>
+    | Guard<Reflect>,
 ): Reflect => {
   const check = <A>(X: Runtype<A>): A => X.check({});
   switch (X.tag) {
@@ -580,6 +637,9 @@ describe('reflection', () => {
     case 'brand':
       check<Static<typeof X.entity>>(X);
       break;
+    case 'guard':
+      check<Static<typeof X>>(X);
+      break;
   }
 
   return X;
@@ -607,6 +667,24 @@ function assertThrows<A>(value: unknown, runtype: Runtype<A>, error: string, key
     const { message: errorMessage, key: errorKey } = exception;
 
     expect(exception).toBeInstanceOf(ValidationError);
+    expect(errorMessage).toBe(error);
+    expect(errorKey).toBe(key);
+  }
+}
+
+function assertThrowsRegularError<A>(
+  value: unknown,
+  runtype: Runtype<A>,
+  error: string,
+  key?: string,
+) {
+  try {
+    runtype.check(value);
+    fail('value passed validation even though it was not expected to');
+  } catch (exception) {
+    const { message: errorMessage, key: errorKey } = exception;
+
+    expect(exception).toBeInstanceOf(Error);
     expect(errorMessage).toBe(error);
     expect(errorKey).toBe(key);
   }
