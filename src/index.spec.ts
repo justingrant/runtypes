@@ -415,7 +415,7 @@ describe('check errors', () => {
     assertThrowsRegularError(
       new SomeClassV1(42),
       Guard<SomeClassV1>('SomeClass', badGuard),
-      'Cannot report more than one error from a guard function',
+      'Cannot report more than one error from a type guard',
     );
   });
 
@@ -427,7 +427,7 @@ describe('check errors', () => {
     assertThrowsRegularError(
       new SomeClassV1(42),
       Guard<SomeClassV1>('SomeClass', badGuard),
-      'Guard function cannot return true after reporting an error',
+      'Type guard must return false after reporting an error',
     );
   });
 });
